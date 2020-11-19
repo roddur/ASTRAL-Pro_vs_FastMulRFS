@@ -2,7 +2,9 @@
 
 # Written by Mrinmoy S. Roddur in Fall 2020
 
-base="/home/mrinmoy/Projects/Compare_FastMulRFS_with_ASTRAL-Pro/INDELible_Pipeline"
+#file locations
+
+base="$HOME/scratch/ASTRAL-Pro_vs_FastMulRFS/INDELible_Pipeline/"
 data="$base/sim_data"
 code="$base/sim_code"
 
@@ -10,6 +12,8 @@ setindeliblepy="$code/set_indelible_params.py"
 indeliblepy="$code/run_indelible.py"
 indelible="$code/indelible"
 fasttree="$code/FastTree"
+
+#Constants
 
 nrepl=10
 repls=( $( seq -f "%02g" 1 $nrepl ) )
@@ -21,8 +25,13 @@ ilss=( 0 2e8 5e8)
 sqlens=( 100 500 )
 n_gtrees=( 100 1000)
 
-function set_indelible_params {
+# param: the location of the directory
+# loops through each replicate, creates two directory - 100 and 500, stores sequences and estimated trees in there, 
+# and also makes a copy of the trees in trees_est files
+
+function estimate_trees {
     for repl in ${repls[@]}; do
+        #trees.txt file contains all the gene trees. Unfortunately, INDELible works with one file containing all the trees
         rm -f $1/$repl/trees.txt
         for gtree in ${total_gtrees[@]}; do
             if [ -f $1/$repl/g_trees$gtree\.trees ]; then
@@ -32,6 +41,8 @@ function set_indelible_params {
         for seqlen in ${sqlens[@]}; do
             rm -rf $1/$repl/$seqlen
             mkdir $1/$repl/$seqlen
+
+            # takes as input the number of gene trees and sequence lengths, and generates some parameter files.
             python $setindeliblepy \
                 -n $n_total_gtrees \
                 -f 113.48869 69.02545 78.66144 99.83793 \
@@ -40,6 +51,8 @@ function set_indelible_params {
                 -l $seqlen \
                 -o $1/$repl/indelible-parameters.csv
 
+
+            # based on the parameter file, generates all phylip files and store them in 100/ or 500/ directory
             python $indeliblepy \
                 -x $indelible \
                 -s 1 \
@@ -48,6 +61,9 @@ function set_indelible_params {
                 -t $1/$repl/trees.txt \
                 -o $1/$repl/$seqlen
 
+	        rm -f $1/$repl/trees_est\_$seqlen.txt
+
+            # runs FastTree on phylip files. I've also copied the trees in trees_est_$seqlen.txt files. 
             for gtree in ${total_gtrees[@]}; do
                 $fasttree -nt -gtr $1/$repl/$seqlen/$gtree\.phy > $1/$repl/$seqlen/$gtree\.nwk
                 $1/$repl/$seqlen/$gtree\.nwk >> $1/$repl/trees_est\_$seqlen.txt
@@ -57,18 +73,20 @@ function set_indelible_params {
     done
 }
 
-set_indelible_params $data/default 100
+estimate_trees $data/default
 
+: '
 for gdr in ${gdrs[@]}; do
     for glr in ${glrs[@]}; do
         if [ -d $data/exp_gdl_$gdr\_$glr ]; then
-            set_indelible_params $data/exp_gdl_$gdr\_$glr 100
+            estimate_trees $data/exp_gdl_$gdr\_$glr
         fi
     done
 done
 
 for ils in ${ilss[@]}; do
-    set_indelible_params $data/exp_ils_$ilss 100
+    estimate_trees $data/exp_ils_$ilss
 done
 
-set_indelible_params $data/exp_species 1000
+estimate_trees $data/exp_species
+'
