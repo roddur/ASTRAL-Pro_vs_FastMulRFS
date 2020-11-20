@@ -4,7 +4,7 @@
 
 #File locations
 
-base="$HOME/Projects/Compare_FastMulRFS_with_ASTRAL-Pro/INDELible_Pipeline"
+base="$HOME/ASTRAL-Pro_vs_FastMulRFS/INDELible_Pipeline"
 data="$base/sim_data"
 code="$base/sim_code"
 batchfile="$code/template.sbatch"
@@ -35,8 +35,8 @@ function estimate_trees_parallel {
         touch $data/$1/$repl/ind_job.sbatch
         cat $batchfile > $data/$1/$repl/ind_job.sbatch
         sed -i "s/TEMPLATE/$1\_$repl\_job/g" $data/$1/$repl/ind_job.sbatch
-        echo $code/job_per_repl $1 >> $data/$1/$repl/ind_job.sbatch
-        sbatch $data/$1/$repl\ind_job.sbatch
+        echo $code/job_per_repl.sh $1 $repl >> $data/$1/$repl/ind_job.sbatch
+        sbatch $data/$1/$repl/ind_job.sbatch
     done
 
 }
